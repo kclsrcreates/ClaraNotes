@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaraNotes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--night:#0a0a0f;--deep:#13131a;--surface:#1c1c26;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#e8e6f0;--muted:#6b6880;--gold:#f0c060;--coral:#ff6b6b;--mint:#50e3a4;--sky:#64b5f6;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--night);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+</style>
+</head>
+<body>
+<div id="authScreen" style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--night);">
+<div style="background:#13131a;border:1px solid rgba(255,255,255,0.13);border-radius:20px;padding:48px 44px;width:100%;max-width:420px;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+<div style="text-align:center;margin-bottom:32px;">
+<div style="width:38px;height:38px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">✦</div>
+<div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,#f0c060,#e8e6f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ClaraNotes</div>
+</div>
+<div style="display:flex;background:#1c1c26;border-radius:10px;padding:3px;margin-bottom:24px;">
+<button onclick="switchTab('login')" id="tabLogin" style="flex:1;padding:8px;border:none;border-radius:8px;background:#13131a;color:#e8e6f0;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;">Sign In</button>
+<button onclick="switchTab('signup')" id="tabSignup" style="flex:1;padding:8px;border:none;border-radius:8px;background:transparent;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;">Create Account</button>
+</div>
+<div id="authError" style="display:none;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.25);border-radius:8px;padding:10px 14px;font-size:0.78rem;color:#ff6b6b;margin-bottom:16px;"></div>
+<div id="authSuccess" style="display:none;background:rgba(80,227,164,0.1);border:1px solid rgba(80,227,164,0.25);border-radius:8px;padding:10px 14px;font-size:0.78rem;color:#50e3a4;margin-bottom:16px;"></div>
+<div id="nameGroup" style="display:none;margin-bottom:16px;">
+<label style="display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;color:#6b6880;margin-bottom:8px;">Full Name</label>
+<input id="nameInput" type="text" placeholder="Your name" style="width:100%;background:#1c1c26;border:1px solid rgba(255,255,255,0.13);border-radius:10px;padding:12px 16px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.88rem;color:#e8e6f0;outline:none;" />
+</div>
+<div style="margin-bottom:16px;">
+<label style="display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;color:#6b6880;margin-bottom:8px;">Email</label>
+<input id="emailInput" type="email" placeholder="you@email.com" style="width:100%;background:#1c1c26;border:1px solid rgba(255,255,255,0.13);border-radius:10px;padding:12px 16px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.88rem;color:#e8e6f0;outline:none;" />
+</div>
+<div style="margin-bottom:20px;">
+<label style="display:block;font-family:'JetBrains Mono',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;color:#6b6880;margin-bottom:8px;">Password</label>
+<input id="passwordInput" type="password" placeholder="••••••••" style="width:100%;background:#1c1c26;border:1px solid rgba(255,255,255,0.13);border-radius:10px;padding:12px 16px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.88rem;color:#e8e6f0;outline:none;" />
+</div>
+<button onclick="handleAuth()" id="authBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border:none;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;font-weight:700;color:#0a0a0f;cursor:pointer;">Sign In</button>
+</div>
+</div>
+<div id="appScreen" style="display:none;flex-direction:column;height:100vh;">
+<nav style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;background:var(--night);border-bottom:1px solid var(--border);flex-shrink:0;">
+<div style="display:flex;align-items:center;gap:8px;">
+<div style="width:28px;height:28px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">✦</div>
+<span style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,#f0c060,#e8e6f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ClaraNotes</span>
+</div>
+<div style="display:flex;align-items:center;gap:10px;">
+<span id="navUser" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#6b6880;padding:4px 10px;background:#1c1c26;border-radius:6px;border:1px solid var(--border);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+<button onclick="signOut()" style="padding:5px 12px;background:transparent;border:1px solid rgba(255,255,255,0.13);border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.72rem;font-weight:600;color:#6b6880;cursor:pointer;">Sign Out</button>
+</div>
+</nav>
+<div style="display:grid;grid-template-columns:240px 1fr 290px;flex:1;overflow:hidden;">
+<div style="background:var(--night);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 14px 8px;">
+<span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.14em;color:#6b6880;">My Notes</span>
+<button onclick="createNote()" style="width:26px;height:26px;background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#f0c060;cursor:pointer;">+</button>
+</div>
+<input id="searchInput" placeholder="🔍 Search..." oninput="filterNotes(this.value)" style="margin:0 10px 10px;background:#1c1c26;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.78rem;color:#e8e6f0;outline:none;width:calc(100% - 20px);" />
+<div id="notesList" style="flex:1;overflow-y:auto;padding:0 8px;"></div>
+<div style="padding:12px 14px;border-top:1px solid var(--border);">
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:#6b6880;margin-bottom:6px;">
+<span>Storage</span><span id="storageDisplay" style="color:#50e3a4;">0 notes</span>
+</div>
+<div style="height:3px;background:#1c1c26;border-radius:2px;overflow:hidden;">
+<div id="storageFill" style="height:100%;background:linear-gradient(90deg,#50e3a4,#f0c060);border-radius:2px;width:0%;transition:width 0.5s;"></div>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;background:var(--deep);overflow:hidden;">
+<div style="display:flex;align-items:center;gap:3px;padding:7px 12px;border-bottom:1px solid var(--border);background:var(--night);flex-wrap:wrap;flex-shrink:0;">
+<button onclick="createNote()" style="padding:5px 12px;background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.25);border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.75rem;font-weight:600;color:#f0c060;cursor:pointer;">+ New Note</button>
+<button onclick="deleteNoteConfirm()" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.75rem;color:#6b6880;cursor:pointer;">🗑 Delete</button>
+<button onclick="exportNote()" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.75rem;color:#6b6880;cursor:pointer;">⬇ Export</button>
+<select id="tagSelector" onchange="onTagChange()" style="margin-left:auto;background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.72rem;color:#e8e6f0;cursor:pointer;outline:none;">
+<option value="General">General</option>
+<option value="Clinical">Clinical</option>
+<option value="Study">Study</option>
+<option value="Ideas">Ideas</option>
+<option value="Finance">Finance</option>
+<option value="Personal">Personal</option>
+</select>
+</div>
+<div id="canvasEmpty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#6b6880;">
+<div style="font-size:3rem;">✦</div>
+<div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:#e8e6f0;opacity:0.5;">No note selected</div>
+<div style="font-size:0.82rem;font-weight:300;">Pick a note or create a new one</div>
+<button onclick="createNote()" style="background:linear-gradient(135deg,#f0c060,#ff6b6b);color:#0a0a0f;border:none;padding:12px 28px;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;margin-top:8px;">+ Create First Note</button>
+</div>
+<div id="noteEditor" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+<div style="padding:28px 36px 0;flex-shrink:0;">
+<input id="noteTitleInput" placeholder="Note title..." oninput="onTitleChange()" style="font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;background:transparent;border:none;outline:none;color:#e8e6f0;width:100%;letter-spacing:-0.02em;margin-bottom:10px;" />
+<div style="display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap;">
+<span id="metaDate" style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#6b6880;">📅 —</span>
+<span id="metaWords" style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#6b6880;">📝 0 words</span>
+<span id="metaSync" style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#50e3a4;">☁ Saved</span>
+</div>
+</div>
+<div id="noteBody" contenteditable="true" oninput="onContentChange()" onmouseup="onTextSelect()" style="flex:1;overflow-y:auto;padding:0 36px 28px;font-size:0.92rem;line-height:1.9;color:#cccccc;font-weight:300;outline:none;"></div>
+</div>
+<div id="statusBar" style="display:none;align-items:center;gap:14px;padding:5px 16px;border-top:1px solid var(--border);background:var(--night);font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:#6b6880;flex-shrink:0;">
+<div style="width:6px;height:6px;border-radius:50%;background:#50e3a4;"></div>
+<span id="saveIndicator">Saved</span>
+<span id="sbWords">0 words</span>
+<span style="margin-left:auto;" id="sbDate">—</span>
+</div>
+</div>
+<div style="background:var(--night);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--border);flex-shrink:0;">
+<div style="display:flex;align-items:center;gap:7px;font-size:0.8rem;font-weight:700;color:#f0c060;">
+<div style="width:26px;height:26px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;">✦</div>
+Clara AI
+</div>
+<span id="aiStatus" style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;background:#1c1c26;border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:#6b6880;">Ready</span>
+</div>
+<div id="aiFeed" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;">
+<div style="display:flex;flex-direction:column;">
+<div style="font-family:'JetBrains Mono',monospace;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.1em;color:#6b6880;margin-bottom:4px;padding:0 4px;">Clara AI</div>
+<div style="padding:10px 12px;border-radius:10px 10px 10px 3px;background:#1c1c26;border:1px solid var(--border);font-size:0.78rem;line-height:1.6;color:#e8e6f0;">Hi! I'm Clara. Create or select a note and I'll read it — then I can summarize, create flashcards, extract action items, or help you write more.</div>
+</div>
+</div>
+<div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;">
+<button onclick="quickAsk('Summarize this note')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Summarize</button>
+<button onclick="quickAsk('Extract action items from this note')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Actions</button>
+<button onclick="quickAsk('Generate 5 flashcards from this note in Q: A: format')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Flashcards</button>
+<button onclick="quickAsk('Continue writing this note for me')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Continue</button>
+<button onclick="quickAsk('Translate this note to Spanish')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Translate</button>
+<button onclick="quickAsk('Quiz me on this note')" style="background:#1c1c26;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.64rem;font-weight:600;cursor:pointer;color:#6b6880;font-family:'Plus Jakarta Sans',sans-serif;">Quiz Me</button>
+</div>
+<div style="display:flex;gap:7px;align-items:flex-end;padding:10px 11px;border-top:1px solid var(--border);flex-shrink:0;">
+<textarea id="aiInput" placeholder="Ask Clara anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}" style="flex:1;background:#1c1c26;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.78rem;color:#e8e6f0;resize:none;outline:none;min-height:36px;"></textarea>
+<button onclick="sendAI()" id="aiSendBtn" style="width:34px;height:34px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:#0a0a0f;font-weight:700;flex-shrink:0;">→</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="deleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:1000;">
+<div style="background:#13131a;border:1px solid rgba(255,255,255,0.13);border-radius:16px;padding:32px 28px;max-width:360px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+<div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-bottom:10px;">🗑 Delete this note?</div>
+<div style="font-size:0.82rem;color:#6b6880;line-height:1.6;margin-bottom:16px;font-weight:300;">This will delete the note permanently.</div>
+<div id="modalNoteTitle" style="background:#1c1c26;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:0.8rem;color:#e8e6f0;margin-bottom:20px;font-style:italic;"></div>
+<div style="display:flex;gap:10px;">
+<button onclick="closeModal()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1c1c26;color:#e8e6f0;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;">Cancel</button>
+<button onclick="confirmDelete()" style="flex:1;padding:10px;border-radius:8px;background:rgba(255,107,107,0.15);color:#ff6b6b;border:1px solid rgba(255,107,107,0.3);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;">Delete</button>
+</div>
+</div>
+</div>
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#222230;border:1px solid rgba(255,255,255,0.13);border-radius:10px;padding:12px 20px;font-size:0.82rem;font-weight:500;z-index:999;transition:transform 0.3s ease;white-space:nowrap;color:#e8e6f0;"></div>
+<script>
+const SUPABASE_URL='https://hotsttcrivqmyjpuvqto.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvdHN0dGNyaXZxbXlqcHV2cXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MjkzNzUsImV4cCI6MjA5MzAwNTM3NX0.J3rDyXJrYNAJS-J5V6NlF_rtEtux_JYxoWpS640-vGw';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null,notes=[],activeNoteId=null,saveTimer=null,authMode='login';
+
+async function init(){
+const{data:{session}}=await sb.auth.getSession();
+if(session){currentUser=session.user;showApp();}
+sb.auth.onAuthStateChange((e,s)=>{if(e==='SIGNED_IN'&&s){currentUser=s.user;showApp();}else if(e==='SIGNED_OUT'){currentUser=null;showAuth();}});
+}
+
+function switchTab(mode){
+authMode=mode;
+document.getElementById('tabLogin').style.background=mode==='login'?'#13131a':'transparent';
+document.getElementById('tabLogin').style.color=mode==='login'?'#e8e6f0':'#6b6880';
+document.getElementById('tabSignup').style.background=mode==='signup'?'#13131a':'transparent';
+document.getElementById('tabSignup').style.color=mode==='signup'?'#e8e6f0':'#6b6880';
+document.getElementById('nameGroup').style.display=mode==='signup'?'block':'none';
+document.getElementById('authBtn').textContent=mode==='login'?'Sign In':'Create Account';
+document.getElementById('authError').style.display='none';
+document.getElementById('authSuccess').style.display='none';
+}
+
+async function handleAuth(){
+const email=document.getElementById('emailInput').value.trim();
+const password=document.getElementById('passwordInput').value;
+const btn=document.getElementById('authBtn');
+const err=document.getElementById('authError');
+const suc=document.getElementById('authSuccess');
+if(!email||!password){err.textContent='Please fill in all fields.';err.style.display='block';return;}
+btn.disabled=true;btn.textContent='Please wait...';
+err.style.display='none';suc.style.display='none';
+try{
+if(authMode==='login'){
+const{error}=await sb.auth.signInWithPassword({email,password});
+if(error)throw error;
+}else{
+const name=document.getElementById('nameInput').value.trim();
+const{error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});
+if(error)throw error;
+suc.textContent='Account created! Check your email to verify, then sign in.';
+suc.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;
+}
+}catch(e){err.textContent=e.message||'Something went wrong.';err.style.display='block';btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account';}
+}
+
+async function signOut(){await sb.auth.signOut();}
+
+function showApp(){
+document.getElementById('authScreen').style.display='none';
+const app=document.getElementById('appScreen');
+app.style.display='flex';
+document.getElementById('navUser').textContent=currentUser?.email||'';
+loadNotes();
+addAIMsg('clara','Welcome! You\'re signed in as <strong>'+escHtml(currentUser?.email||'')+'</strong>. Create a note or select one to get started.');
+}
+
+function showAuth(){
+document.getElementById('authScreen').style.display='flex';
+document.getElementById('appScreen').style.display='none';
+}
+
+async function loadNotes(){
+const{data,error}=await sb.from('notes').select('*').order('updated_at',{ascending:false});
+if(error){showToast('Error loading notes','error');return;}
+notes=data||[];renderNotesList(notes);updateStorage();
+}
+
+function renderNotesList(list){
+const el=document.getElementById('notesList');
+if(!list.length){el.innerHTML='<div style="text-align:center;padding:40px 20px;color:#6b6880;font-size:0.8rem;font-weight:300;line-height:1.7;"><div style="font-size:2rem;margin-bottom:12px;">✦</div>No notes yet.<br>Tap + to create one.</div>';return;}
+el.innerHTML=list.map(n=>`<div class="ni" id="ni-${n.id}" onclick="openNote('${n.id}')" style="padding:11px 12px;border-radius:8px;cursor:pointer;border:1px solid ${n.id===activeNoteId?'rgba(240,192,96,0.18)':'transparent'};background:${n.id===activeNoteId?'rgba(240,192,96,0.07)':'transparent'};margin-bottom:2px;">
+<div style="font-size:0.8rem;font-weight:600;color:#e8e6f0;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.title||'Untitled')}</div>
+<div style="font-size:0.7rem;color:#6b6880;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:300;">${escHtml(stripHtml(n.content||'').substring(0,60))||'Empty note...'}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;">
+<span style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:#6b6880;">${formatDate(n.updated_at)}</span>
+<span style="font-size:0.58rem;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(240,192,96,0.15);color:#f0c060;">${n.tag||'General'}</span>
+</div></div>`).join('');
+}
+
+async function createNote(){
+const{data,error}=await sb.from('notes').insert([{user_id:currentUser.id,title:'Untitled Note',content:'',tag:'General'}]).select().single();
+if(error){showToast('Error creating note','error');return;}
+notes.unshift(data);renderNotesList(notes);openNote(data.id);
+setTimeout(()=>document.getElementById('noteTitleInput').focus(),100);
+showToast('New note created ✦','success');
+}
+
+function openNote(id){
+const note=notes.find(n=>n.id===id);if(!note)return;
+activeNoteId=id;
+renderNotesList(notes);
+document.getElementById('canvasEmpty').style.display='none';
+const ed=document.getElementById('noteEditor');
+ed.style.display='flex';ed.style.flexDirection='column';
+document.getElementById('statusBar').style.display='flex';
+document.getElementById('noteTitleInput').value=note.title||'';
+document.getElementById('noteBody').innerHTML=note.content||'';
+document.getElementById('tagSelector').value=note.tag||'General';
+document.getElementById('metaDate').textContent='📅 '+formatDate(note.updated_at);
+document.getElementById('sbDate').textContent=formatDate(note.updated_at);
+updateWordCount();setSaveState('saved');
+const preview=stripHtml(note.content||'').substring(0,150);
+addAIMsg('clara','Opened "<strong>'+escHtml(note.title||'Untitled')+'</strong>". '+(preview?'I can see your note. Want me to summarize, generate flashcards, or extract action items?':'This note is empty. Want me to help you start writing?'));
+}
+
+function onTitleChange(){scheduleSave();}
+function onContentChange(){updateWordCount();scheduleSave();}
+function onTagChange(){scheduleSave();}
+
+function scheduleSave(){
+setSaveState('saving');clearTimeout(saveTimer);
+saveTimer=setTimeout(saveCurrentNote,1200);
+}
+
+async function saveCurrentNote(){
+if(!activeNoteId)return;
+const title=document.getElementById('noteTitleInput').value;
+const content=document.getElementById('noteBody').innerHTML;
+const tag=document.getElementById('tagSelector').value;
+const wordCount=countWords(stripHtml(content));
+const{error}=await sb.from('notes').update({title,content,tag,word_count:wordCount}).eq('id',activeNoteId);
+if(error){setSaveState('saving');return;}
+const idx=notes.findIndex(n=>n.id===activeNoteId);
+if(idx!==-1){notes[idx]={...notes[idx],title,content,tag,word_count:wordCount};}
+renderNotesList(notes);setSaveState('saved');
+}
+
+function deleteNoteConfirm(){
+if(!activeNoteId)return;
+const note=notes.find(n=>n.id===activeNoteId);
+document.getElementById('modalNoteTitle').textContent=note?.title||'Untitled Note';
+const m=document.getElementById('deleteModal');m.style.display='flex';
+}
+
+async function confirmDelete(){
+closeModal();
+const{error}=await sb.from('notes').delete().eq('id',activeNoteId);
+if(error){showToast('Error deleting note','error');return;}
+notes=notes.filter(n=>n.id!==activeNoteId);activeNoteId=null;
+renderNotesList(notes);updateStorage();
+document.getElementById('noteEditor').style.display='none';
+document.getElementById('statusBar').style.display='none';
+document.getElementById('canvasEmpty').style.display='flex';
+showToast('Note deleted','success');
+}
+
+function closeModal(){document.getElementById('deleteModal').style.display='none';}
+
+function exportNote(){
+if(!activeNoteId)return;
+const note=notes.find(n=>n.id===activeNoteId);if(!note)return;
+const text=`${note.title||'Untitled'}\n${'='.repeat(40)}\n\n${stripHtml(note.content||'')}`;
+const blob=new Blob([text],{type:'text/plain'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+a.download=`${(note.title||'note').replace(/[^a-z0-9]/gi,'_')}.txt`;a.click();
+showToast('Exported ✓','success');
+}
+
+function filterNotes(q){
+const filtered=q?notes.filter(n=>(n.title||'').toLowerCase().includes(q.toLowerCase())||stripHtml(n.content||'').toLowerCase().includes(q.toLowerCase())):notes;
+renderNotesList(filtered);
+}
+
+function setSaveState(state){
+const el=document.getElementById('saveIndicator');
+const meta=document.getElementById('metaSync');
+if(state==='saving'){el.textContent='Saving...';el.style.color='#f0c060';meta.textContent='☁ Saving...';meta.style.color='#f0c060';}
+else{el.textContent='Saved';el.style.color='#50e3a4';meta.textContent='☁ Saved';meta.style.color='#50e3a4';}
+}
+
+function updateWordCount(){
+const words=countWords(stripHtml(document.getElementById('noteBody').innerHTML));
+document.getElementById('metaWords').textContent='📝 '+words+' words';
+document.getElementById('sbWords').textContent=words+' words';
+}
+
+function onTextSelect(){
+const sel=window.getSelection();
+if(sel&&!sel.isCollapsed&&sel.toString().length>3){
+addAIMsg('clara','You selected: "<em>'+escHtml(sel.toString().substring(0,100))+'</em>" — Want me to explain, expand, or create a flashcard from this?');
+}
+}
+
+async function sendAI(){
+const input=document.getElementById('aiInput');
+const text=input.value.trim();if(!text)return;
+input.value='';await runAI(text);
+}
+
+async function quickAsk(prompt){await runAI(prompt);}
+
+async function runAI(userMsg){
+const btn=document.getElementById('aiSendBtn');
+btn.disabled=true;
+document.getElementById('aiStatus').textContent='Thinking...';
+addAIMsg('user',escHtml(userMsg));
+const thinkId='think-'+Date.now();
+const thinkEl=document.createElement('div');
+thinkEl.id=thinkId;thinkEl.style.cssText='display:flex;gap:4px;padding:10px 14px;background:#1c1c26;border:1px solid var(--border);border-radius:10px;width:fit-content;';
+thinkEl.innerHTML='<span style="width:6px;height:6px;background:#f0c060;border-radius:50%;animation:t 1.2s infinite;display:block;"></span><span style="width:6px;height:6px;background:#f0c060;border-radius:50%;animation:t 1.2s 0.2s infinite;display:block;"></span><span style="width:6px;height:6px;background:#f0c060;border-radius:50%;animation:t 1.2s 0.4s infinite;display:block;"></span>';
+const feed=document.getElementById('aiFeed');
+feed.appendChild(thinkEl);feed.scrollTop=99999;
+const note=notes.find(n=>n.id===activeNoteId);
+const noteContext=note?`Current note titled "${note.title||'Untitled'}" with tag "${note.tag||'General'}":\n\n${stripHtml(note.content||'').substring(0,2000)}`:'No note is currently open.';
+const systemPrompt=`You are Clara AI inside ClaraNotes. Be concise, warm, and direct. ${noteContext} Format flashcards as Q: / A: pairs. Format action items as numbered lists. Never make up information not in the note.`;
+try{
+const res=await fetch('https://api.anthropic.com/v1/messages',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:systemPrompt,messages:[{role:'user',content:userMsg}]})
+});
+const data=await res.json();
+document.getElementById(thinkId)?.remove();
+const reply=data?.content?.[0]?.text||'Something went wrong. Try again.';
+addAIMsg('clara',reply.replace(/\n/g,'<br>'));
+}catch(e){
+document.getElementById(thinkId)?.remove();
+addAIMsg('clara','Network error. Check your connection and try again.');
+}
+btn.disabled=false;
+document.getElementById('aiStatus').textContent='Ready';
+}
+
+function addAIMsg(role,html){
+const feed=document.getElementById('aiFeed');
+const wrap=document.createElement('div');
+wrap.style.cssText='display:flex;flex-direction:column;'+(role==='user'?'align-items:flex-end;':'');
+wrap.innerHTML=`<div style="font-family:'JetBrains Mono',monospace;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.1em;color:#6b6880;margin-bottom:4px;padding:0 4px;">${role==='clara'?'Clara AI':'You'}</div><div style="padding:10px 12px;border-radius:${role==='clara'?'10px 10px 10px 3px':'10px 10px 3px 10px'};background:${role==='clara'?'#1c1c26':'rgba(240,192,96,0.1)'};border:1px solid ${role==='clara'?'var(--border)':'rgba(240,192,96,0.2)'};font-size:0.78rem;line-height:1.6;color:#e8e6f0;max-width:95%;">${html}</div>`;
+feed.appendChild(wrap);feed.scrollTop=99999;
+}
+
+function countWords(t){return t.trim()?t.trim().split(/\s+/).length:0;}
+function stripHtml(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||d.innerText||'';}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function formatDate(iso){if(!iso)return'—';const d=new Date(iso),now=new Date(),diff=Math.floor((now-d)/1000);if(diff<60)return'Just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+function updateStorage(){const c=notes.length;document.getElementById('storageDisplay').textContent=c+' note'+(c!==1?'s':'');document.getElementById('storageFill').style.width=Math.min((c/100)*100,100)+'%';}
+
+let toastTimer;
+function showToast(msg,type){
+const el=document.getElementById('toast');el.textContent=msg;
+el.style.color=type==='error'?'#ff6b6b':'#50e3a4';
+el.style.transform='translateX(-50%) translateY(0)';
+clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.transform='translateX(-50%) translateY(80px)',3000);
+}
+
+const style=document.createElement('style');
+style.textContent='@keyframes t{0%,100%{opacity:0.3;transform:translateY(0);}50%{opacity:1;transform:translateY(-4px);}}';
+document.head.appendChild(style);
+
+init();
+</script>
+</body>
+</html>
