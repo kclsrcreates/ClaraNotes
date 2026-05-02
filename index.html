@@ -193,3 +193,509 @@ input,textarea,button,select{font-family:inherit;}
 }
 </style>
 </head>
+<body>
+<!-- AUTH -->
+<div id="authScreen">
+<div class="auth-box">
+<div class="auth-brand">
+<div class="auth-icon">✦</div>
+<div class="auth-name">ClaraNotes</div>
+</div>
+<div class="auth-tabs">
+<button class="auth-tab on" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+<button class="auth-tab" id="tabSignup" onclick="switchTab('signup')">Create Account</button>
+</div>
+<div class="auth-alert err" id="authErr"></div>
+<div class="auth-alert ok" id="authOk"></div>
+<div class="fld" id="nameWrap" style="display:none">
+<label>Full Name</label>
+<input id="nameIn" type="text" placeholder="Your name"/>
+</div>
+<div class="fld">
+<label>Email</label>
+<input id="emailIn" type="email" placeholder="you@email.com"/>
+</div>
+<div class="fld">
+<label>Password</label>
+<input id="passIn" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()"/>
+</div>
+<button class="auth-submit" id="authBtn" onclick="doAuth()">Sign In</button>
+</div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+<!-- TOPBAR -->
+<div class="topbar">
+<div class="topbar-brand">
+<div class="topbar-icon">✦</div>
+<span class="topbar-name">ClaraNotes</span>
+</div>
+<input class="topbar-search" placeholder="🔍 Search notes..." id="searchIn" oninput="filterNotes(this.value)"/>
+<div class="topbar-actions">
+<button class="tb-btn primary" onclick="newNote()">+ New Note</button>
+<button class="tb-btn" onclick="toggleTheme()">🌙</button>
+<span class="user-chip" id="userChip"></span>
+<button class="tb-btn" onclick="doSignOut()">Sign Out</button>
+</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="app-layout">
+<!-- SIDEBAR -->
+<div class="sidebar">
+<div class="sb-head">
+<span class="sb-label">Notebooks</span>
+<button class="sb-new" onclick="newNote()" title="New Note">+</button>
+</div>
+<div class="nb-list">
+<div class="nb-item on" id="nb-all" onclick="filterByNb('all',this)"><div class="nb-dot" style="background:#f0c060"></div>All Notes</div>
+<div class="nb-item" id="nb-pinned" onclick="filterByNb('pinned',this)"><div class="nb-dot" style="background:#ff6b6b"></div>Pinned</div>
+<div class="nb-item" id="nb-Clinical" onclick="filterByNb('Clinical',this)"><div class="nb-dot" style="background:#ff6b6b"></div>Clinical</div>
+<div class="nb-item" id="nb-Study" onclick="filterByNb('Study',this)"><div class="nb-dot" style="background:#50e3a4"></div>Study</div>
+<div class="nb-item" id="nb-Ideas" onclick="filterByNb('Ideas',this)"><div class="nb-dot" style="background:#f0c060"></div>Ideas</div>
+<div class="nb-item" id="nb-Finance" onclick="filterByNb('Finance',this)"><div class="nb-dot" style="background:#64b5f6"></div>Finance</div>
+<div class="nb-item" id="nb-Personal" onclick="filterByNb('Personal',this)"><div class="nb-dot" style="background:#b39ddb"></div>Personal</div>
+</div>
+<div class="sb-label" style="padding:0 18px 6px;">Notes</div>
+<div class="notes-list" id="notesList"></div>
+<div class="sb-footer">
+<div class="storage-row"><span>Notes</span><span id="noteCount" style="color:#50e3a4">0</span></div>
+<div class="storage-bar"><div class="storage-fill" id="storageFill" style="width:0%"></div></div>
+</div>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas">
+<div class="canvas-toolbar" id="canvasToolbar">
+<button class="ct-btn" onclick="fmt('bold')"><b>B</b></button>
+<button class="ct-btn" onclick="fmt('italic')"><i>I</i></button>
+<button class="ct-btn" onclick="fmt('underline')"><u>U</u></button>
+<div class="ct-div"></div>
+<button class="ct-btn" onclick="fmtBlock('h1')">H1</button>
+<button class="ct-btn" onclick="fmtBlock('h2')">H2</button>
+<button class="ct-btn" onclick="fmtBlock('ul')">≡ List</button>
+<button class="ct-btn" onclick="addChecklist()">☑ Check</button>
+<div class="ct-div"></div>
+<button class="ct-btn" onclick="fmtHighlight()">🖍 Highlight</button>
+<button class="ct-btn" onclick="pinNote()">📌 Pin</button>
+<button class="ct-btn" onclick="exportNote()">⬇ Export</button>
+<button class="ct-btn" onclick="deleteConfirm()" style="color:var(--coral)">🗑</button>
+<select class="tag-sel" id="tagSel" onchange="onTagChange()">
+<option value="General">General</option>
+<option value="Clinical">Clinical</option>
+<option value="Study">Study</option>
+<option value="Ideas">Ideas</option>
+<option value="Finance">Finance</option>
+<option value="Personal">Personal</option>
+</select>
+</div>
+
+<div class="canvas-empty" id="canvasEmpty">
+<div class="ce-icon">✦</div>
+<div class="ce-title">No note selected</div>
+<div class="ce-sub">Choose a note or create a new one</div>
+<button class="ce-btn" onclick="newNote()">+ Create First Note</button>
+</div>
+
+<div id="noteEditor" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+<div class="note-editor">
+<input class="note-title" id="noteTitle" placeholder="Note title..." oninput="scheduleSave()"/>
+<div class="note-meta">
+<span class="n-meta" id="metaDate">📅 —</span>
+<span class="n-meta" id="metaWords">📝 0 words</span>
+<span class="n-meta live" id="metaSync">☁ Saved</span>
+</div>
+<div class="note-body" id="noteBody" contenteditable="true" oninput="onBodyInput()" onmouseup="onSelect()"></div>
+</div>
+</div>
+
+<div class="statusbar" id="statusbar" style="display:none;">
+<div class="sb-dot"></div>
+<span id="sbSave">Saved</span>
+<span id="sbWords">0 words</span>
+<span class="sb-right" id="sbDate">—</span>
+</div>
+</div>
+
+<!-- AI PANEL -->
+<div class="ai-panel">
+<div class="ai-head">
+<div class="ai-brand"><div class="ai-glyph">✦</div>Clara AI</div>
+<span class="ai-status" id="aiStatus">Ready</span>
+</div>
+<div class="ai-feed" id="aiFeed">
+<div class="ai-wrap">
+<div class="ai-lbl">Clara AI</div>
+<div class="ai-bub c">Hi! I'm Clara. Open a note and I'll read it — then I can summarize, make flashcards, extract action items, continue writing, translate, or quiz you. What do you need?</div>
+</div>
+</div>
+<div class="ai-quick">
+<button class="ai-q-btn" onclick="ask('Summarize this note')">Summarize</button>
+<button class="ai-q-btn" onclick="ask('Extract action items')">Actions</button>
+<button class="ai-q-btn" onclick="ask('Generate 5 flashcards in Q: A: format')">Flashcards</button>
+<button class="ai-q-btn" onclick="ask('Continue writing this note')">Continue</button>
+<button class="ai-q-btn" onclick="ask('Translate this note to Spanish')">Translate</button>
+<button class="ai-q-btn" onclick="ask('Quiz me on this note')">Quiz Me</button>
+<button class="ai-q-btn" onclick="ask('Write an LCSW progress note format from this')">LCSW Format</button>
+</div>
+<div class="ai-input-row">
+<textarea class="ai-input" id="aiIn" placeholder="Ask Clara anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}"></textarea>
+<button class="ai-send" id="aiSendBtn" onclick="sendAI()">→</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-bg" id="delModal">
+<div class="modal">
+<h3>🗑 Delete this note?</h3>
+<p>This will permanently delete the note. This cannot be undone.</p>
+<div class="modal-preview" id="delPreview"></div>
+<div class="modal-btns">
+<button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+<button class="modal-btn del" onclick="doDelete()">Delete</button>
+</div>
+</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+<script>
+const SUPA_URL='https://hotsttcrivqmyjpuvqto.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvdHN0dGNyaXZxbXlqcHV2cXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MjkzNzUsImV4cCI6MjA5MzAwNTM3NX0.J3rDyXJrYNAJS-J5V6NlF_rtEtux_JYxoWpS640-vGw';
+const OR_KEY='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';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+let user=null,notes=[],activeId=null,saveTimer=null,authMode='login',nbFilter='all',searchQ='';
+
+// AUTH
+async function init(){
+const{data:{session}}=await sb.auth.getSession();
+if(session){user=session.user;showApp();}
+sb.auth.onAuthStateChange((e,s)=>{
+if(e==='SIGNED_IN'&&s){user=s.user;showApp();}
+else if(e==='SIGNED_OUT'){user=null;showAuth();}
+});
+}
+
+function switchTab(m){
+authMode=m;
+document.getElementById('tabLogin').className='auth-tab'+(m==='login'?' on':'');
+document.getElementById('tabSignup').className='auth-tab'+(m==='signup'?' on':'');
+document.getElementById('nameWrap').style.display=m==='signup'?'block':'none';
+document.getElementById('authBtn').textContent=m==='login'?'Sign In':'Create Account';
+document.getElementById('authErr').style.display='none';
+document.getElementById('authOk').style.display='none';
+}
+
+async function doAuth(){
+const email=document.getElementById('emailIn').value.trim();
+const pass=document.getElementById('passIn').value;
+const btn=document.getElementById('authBtn');
+const err=document.getElementById('authErr');
+const ok=document.getElementById('authOk');
+if(!email||!pass){showErr('Please fill in all fields.');return;}
+btn.disabled=true;btn.textContent='Please wait...';
+err.style.display='none';ok.style.display='none';
+try{
+if(authMode==='login'){
+const{error}=await sb.auth.signInWithPassword({email,password:pass});
+if(error)throw error;
+}else{
+const name=document.getElementById('nameIn').value.trim();
+const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+if(error)throw error;
+ok.textContent='Account created! Check your email, then sign in.';
+ok.style.display='block';
+btn.disabled=false;btn.textContent='Create Account';return;
+}
+}catch(e){showErr(e.message||'Something went wrong.');btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account';}
+}
+
+function showErr(m){const el=document.getElementById('authErr');el.textContent=m;el.style.display='block';}
+async function doSignOut(){await sb.auth.signOut();}
+function showApp(){
+document.getElementById('authScreen').style.display='none';
+const a=document.getElementById('appScreen');a.style.display='flex';
+document.getElementById('userChip').textContent=user?.email||'';
+loadNotes();
+addMsg('clara','Welcome back! I\'m Clara. Open a note and I\'ll read it and help you summarize, study, write, or take action. What are you working on today?');
+}
+function showAuth(){
+document.getElementById('authScreen').style.display='flex';
+document.getElementById('appScreen').style.display='none';
+}
+
+// NOTES
+async function loadNotes(){
+const{data,error}=await sb.from('notes').select('*').order('updated_at',{ascending:false});
+if(error){toast('Error loading notes','e');return;}
+notes=data||[];renderList();updateStorage();
+}
+
+function getFiltered(){
+let list=notes;
+if(nbFilter==='pinned')list=list.filter(n=>n.pinned);
+else if(nbFilter!=='all')list=list.filter(n=>n.tag===nbFilter);
+if(searchQ)list=list.filter(n=>(n.title||'').toLowerCase().includes(searchQ)||(strip(n.content||'')).toLowerCase().includes(searchQ));
+return list;
+}
+
+function renderList(){
+const el=document.getElementById('notesList');
+const list=getFiltered();
+if(!list.length){
+el.innerHTML='<div style="text-align:center;padding:30px 16px;color:var(--muted);font-size:0.76rem;line-height:1.7;"><div style="font-size:1.8rem;margin-bottom:10px;">✦</div>No notes here.<br>Tap + to create one.</div>';
+return;
+}
+el.innerHTML=list.map(n=>`
+<div class="note-card${n.id===activeId?' on':''}${n.pinned?' pinned':''}" onclick="openNote('${n.id}')">
+<div class="nc-title">${esc(n.title||'Untitled')}</div>
+<div class="nc-preview">${esc(strip(n.content||'').substring(0,55))||'Empty note...'}</div>
+<div class="nc-meta">
+<span class="nc-date">${fmtDate(n.updated_at)}</span>
+<div style="display:flex;gap:4px;align-items:center;">
+${n.pinned?'<span style="font-size:0.6rem;">📌</span>':''}
+<span class="nc-tag tag-${n.tag||'General'}">${n.tag||'General'}</span>
+</div>
+</div>
+</div>`).join('');
+}
+
+async function newNote(){
+const{data,error}=await sb.from('notes').insert([{user_id:user.id,title:'Untitled Note',content:'',tag:'General',pinned:false}]).select().single();
+if(error){toast('Error creating note','e');return;}
+notes.unshift(data);renderList();openNote(data.id);
+setTimeout(()=>document.getElementById('noteTitle').focus(),100);
+toast('New note created ✦');
+}
+
+function openNote(id){
+const note=notes.find(n=>n.id===id);if(!note)return;
+activeId=id;renderList();
+document.getElementById('canvasEmpty').style.display='none';
+const ed=document.getElementById('noteEditor');ed.style.display='flex';ed.style.flexDirection='column';
+document.getElementById('statusbar').style.display='flex';
+document.getElementById('noteTitle').value=note.title||'';
+document.getElementById('noteBody').innerHTML=note.content||'';
+document.getElementById('tagSel').value=note.tag||'General';
+document.getElementById('metaDate').textContent='📅 '+fmtDate(note.updated_at);
+document.getElementById('sbDate').textContent=fmtDate(note.updated_at);
+updateWords();setSave('saved');
+const preview=strip(note.content||'').substring(0,200);
+addMsg('clara','Opened "<strong>'+esc(note.title||'Untitled')+'</strong>". '+(preview?'I can see your note content. Ask me to summarize, generate flashcards, extract action items, continue writing, or quiz you.':'This note is empty — want me to help you start writing?'));
+}
+
+function scheduleSave(){setSave('saving');clearTimeout(saveTimer);saveTimer=setTimeout(saveNote,1400);}
+
+async function saveNote(){
+if(!activeId)return;
+const title=document.getElementById('noteTitle').value;
+const content=document.getElementById('noteBody').innerHTML;
+const tag=document.getElementById('tagSel').value;
+const wc=countW(strip(content));
+const{error}=await sb.from('notes').update({title,content,tag,word_count:wc}).eq('id',activeId);
+if(error){setSave('saving');return;}
+const i=notes.findIndex(n=>n.id===activeId);
+if(i!==-1)notes[i]={...notes[i],title,content,tag,word_count:wc};
+renderList();setSave('saved');
+}
+
+function onBodyInput(){updateWords();scheduleSave();}
+function onTagChange(){scheduleSave();}
+
+async function pinNote(){
+if(!activeId)return;
+const note=notes.find(n=>n.id===activeId);if(!note)return;
+const pinned=!note.pinned;
+await sb.from('notes').update({pinned}).eq('id',activeId);
+const i=notes.findIndex(n=>n.id===activeId);
+if(i!==-1)notes[i]={...notes[i],pinned};
+renderList();toast(pinned?'Note pinned 📌':'Note unpinned');
+}
+
+function filterByNb(nb,el){
+nbFilter=nb;
+document.querySelectorAll('.nb-item').forEach(e=>e.classList.remove('on'));
+el.classList.add('on');
+renderList();
+}
+
+function filterNotes(q){searchQ=q.toLowerCase();renderList();}
+
+function deleteConfirm(){
+if(!activeId)return;
+const note=notes.find(n=>n.id===activeId);
+document.getElementById('delPreview').textContent=note?.title||'Untitled';
+document.getElementById('delModal').classList.add('on');
+}
+
+async function doDelete(){
+closeModal();
+const{error}=await sb.from('notes').delete().eq('id',activeId);
+if(error){toast('Error deleting','e');return;}
+notes=notes.filter(n=>n.id!==activeId);activeId=null;
+renderList();updateStorage();
+document.getElementById('noteEditor').style.display='none';
+document.getElementById('statusbar').style.display='none';
+document.getElementById('canvasEmpty').style.display='flex';
+toast('Note deleted');
+}
+
+function closeModal(){document.getElementById('delModal').classList.remove('on');}
+
+function exportNote(){
+if(!activeId)return;
+const note=notes.find(n=>n.id===activeId);if(!note)return;
+const text=`${note.title||'Untitled'}\n${'='.repeat(40)}\n\n${strip(note.content||'')}`;
+const blob=new Blob([text],{type:'text/plain'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+a.download=`${(note.title||'note').replace(/[^a-z0-9]/gi,'_')}.txt`;a.click();
+toast('Exported ✓');
+}
+
+// FORMATTING
+function fmt(cmd){document.execCommand(cmd);document.getElementById('noteBody').focus();scheduleSave();}
+function fmtBlock(tag){
+const body=document.getElementById('noteBody');
+if(tag==='h1')document.execCommand('formatBlock',false,'<h1>');
+else if(tag==='h2')document.execCommand('formatBlock',false,'<h2>');
+else if(tag==='ul')document.execCommand('insertUnorderedList');
+body.focus();scheduleSave();
+}
+function fmtHighlight(){
+document.execCommand('styleWithCSS',false,true);
+document.execCommand('hiliteColor',false,'rgba(240,192,96,0.25)');
+document.getElementById('noteBody').focus();scheduleSave();
+}
+function addChecklist(){
+const item=document.createElement('div');
+item.className='checklist-item';
+item.innerHTML='<input type="checkbox" onchange="this.parentElement.querySelector(\'span\').classList.toggle(\'done\',this.checked)"><span contenteditable="true">Task item</span>';
+const body=document.getElementById('noteBody');
+body.appendChild(item);body.focus();scheduleSave();
+}
+function onSelect(){
+const sel=window.getSelection();
+if(sel&&!sel.isCollapsed&&sel.toString().length>3){
+addMsg('clara','You selected: "<em>'+esc(sel.toString().substring(0,100))+'</em>" — Want me to explain, expand, or create a flashcard from this?');
+}
+}
+
+// THEME
+function toggleTheme(){
+const r=document.documentElement;
+const isLight=r.style.getPropertyValue('--night')==='#ffffff';
+if(isLight){
+r.style.setProperty('--night','#0a0a0f');
+r.style.setProperty('--deep','#13131a');
+r.style.setProperty('--surface','#1c1c26');
+r.style.setProperty('--text','#e8e6f0');
+r.style.setProperty('--muted','#6b6880');
+}else{
+r.style.setProperty('--night','#ffffff');
+r.style.setProperty('--deep','#f5f5f7');
+r.style.setProperty('--surface','#ebebed');
+r.style.setProperty('--text','#1a1a2e');
+r.style.setProperty('--muted','#666680');
+}
+}
+
+// AI — calls OpenRouter directly from browser
+async function sendAI(){
+const inp=document.getElementById('aiIn');
+const txt=inp.value.trim();if(!txt)return;
+inp.value='';await runAI(txt);
+}
+async function ask(p){await runAI(p);}
+
+async function runAI(msg){
+const btn=document.getElementById('aiSendBtn');
+btn.disabled=true;
+document.getElementById('aiStatus').textContent='Thinking...';
+addMsg('user',esc(msg));
+const tid='t'+Date.now();
+const tel=document.createElement('div');
+tel.className='ai-wrap';tel.id=tid;
+tel.innerHTML='<div class="ai-lbl">Clara AI</div><div class="ai-think"><span></span><span></span><span></span></div>';
+const feed=document.getElementById('aiFeed');
+feed.appendChild(tel);feed.scrollTop=99999;
+const note=notes.find(n=>n.id===activeId);
+const ctx=note?`Current note: "${note.title||'Untitled'}" (${note.tag||'General'})\n\n${strip(note.content||'').substring(0,2000)}`:'No note open.';
+const sys=`You are Clara AI inside ClaraNotes, a smart note-taking app. Be concise, warm, and direct. ${ctx}\n\nFormat flashcards as Q: / A: pairs. Format action items as numbered lists. Never make up info not in the note.`;
+try{
+const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+method:'POST',
+headers:{
+'Content-Type':'application/json',
+'Authorization':'Bearer '+OR_KEY,
+'HTTP-Referer':'https://clara-notes.vercel.app',
+'X-Title':'ClaraNotes'
+},
+body:JSON.stringify({
+model:'meta-llama/llama-3.1-8b-instruct:free',
+messages:[{role:'system',content:sys},{role:'user',content:msg}]
+})
+});
+const data=await res.json();
+document.getElementById(tid)?.remove();
+const reply=data?.choices?.[0]?.message?.content||'No response. Try again.';
+addMsg('clara',reply.replace(/\n/g,'<br>'));
+}catch(e){
+document.getElementById(tid)?.remove();
+addMsg('clara','Connection error: '+e.message);
+}
+btn.disabled=false;
+document.getElementById('aiStatus').textContent='Ready';
+}
+
+function addMsg(role,html){
+const feed=document.getElementById('aiFeed');
+const wrap=document.createElement('div');
+wrap.className='ai-wrap'+(role==='user'?' u':'');
+wrap.innerHTML=`<div class="ai-lbl">${role==='clara'?'Clara AI':'You'}</div><div class="ai-bub ${role==='clara'?'c':'u'}">${html}</div>`;
+feed.appendChild(wrap);feed.scrollTop=99999;
+}
+
+// HELPERS
+function setSave(s){
+const el=document.getElementById('sbSave');
+const m=document.getElementById('metaSync');
+if(s==='saving'){el.textContent='Saving...';el.style.color='#f0c060';m.textContent='☁ Saving...';m.style.color='#f0c060';}
+else{el.textContent='Saved';el.style.color='#50e3a4';m.textContent='☁ Saved';m.style.color='#50e3a4';}
+}
+function updateWords(){
+const w=countW(strip(document.getElementById('noteBody').innerHTML));
+document.getElementById('metaWords').textContent='📝 '+w+' words';
+document.getElementById('sbWords').textContent=w+' words';
+}
+function updateStorage(){
+const c=notes.length;
+document.getElementById('noteCount').textContent=c;
+document.getElementById('storageFill').style.width=Math.min((c/100)*100,100)+'%';
+}
+function countW(t){return t.trim()?t.trim().split(/\s+/).length:0;}
+function strip(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||d.innerText||'';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(iso){
+if(!iso)return'—';
+const d=new Date(iso),now=new Date(),diff=Math.floor((now-d)/1000);
+if(diff<60)return'Just now';
+if(diff<3600)return Math.floor(diff/60)+'m ago';
+if(diff<86400)return Math.floor(diff/3600)+'h ago';
+return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+let toastT;
+function toast(msg,type){
+const el=document.getElementById('toast');
+el.textContent=msg;
+el.style.color=type==='e'?'#ff6b6b':'#50e3a4';
+el.classList.add('show');
+clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+init();
+</script>
+</body>
+</html>
