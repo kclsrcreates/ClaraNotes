@@ -1,17 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClaraNotes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--night:#0a0a0f;--deep:#13131a;--surface:#1c1c26;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#e8e6f0;--muted:#6b6880;--gold:#f0c060;--coral:#ff6b6b;--mint:#50e3a4;--sky:#64b5f6;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--night);color:var(--text);}
+body{display:flex;flex-direction:column;overflow:hidden;}
+#authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.auth-box{background:#13131a;border:1px solid rgba(255,255,255,0.13);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
+.auth-brand{text-align:center;margin-bottom:28px;}
+.auth-icon{width:44px;height:44px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;}
+.auth-name{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;background:linear-gradient(135deg,#f0c060,#e8e6f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.auth-tabs{display:flex;background:#1c1c26;border-radius:10px;padding:3px;margin-bottom:22px;}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;color:#6b6880;background:transparent;}
+.auth-tab.on{background:#13131a;color:#e8e6f0;}
+.auth-alert{display:none;padding:10px 14px;border-radius:8px;font-size:0.78rem;margin-bottom:14px;}
+.err{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.25);color:#ff6b6b;}
+.ok{background:rgba(80,227,164,0.1);border:1px solid rgba(80,227,164,0.25);color:#50e3a4;}
+.fld{margin-bottom:14px;}
+.fld label{display:block;font-family:'JetBrains Mono',monospace;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.12em;color:#6b6880;margin-bottom:7px;}
+.fld input{width:100%;background:#1c1c26;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;font-size:0.88rem;color:#e8e6f0;outline:none;}
+.fld input::placeholder{color:#6b6880;}
+.auth-submit{width:100%;padding:13px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border:none;border-radius:10px;font-size:0.9rem;font-weight:700;color:#0a0a0f;cursor:pointer;margin-top:6px;}
+#appScreen{display:none;flex-direction:column;height:100vh;overflow:hidden;}
+.topbar{height:50px;background:var(--night);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;}
+.topbar-brand{display:flex;align-items:center;gap:8px;}
+.topbar-icon{width:26px;height:26px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.topbar-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;background:linear-gradient(135deg,#f0c060,#e8e6f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.topbar-search{flex:1;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:0.78rem;color:var(--text);outline:none;}
+.topbar-search::placeholder{color:var(--muted);}
+.topbar-actions{display:flex;gap:6px;margin-left:auto;align-items:center;}
+.tb-btn{padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;font-size:0.72rem;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;}
+.tb-btn:hover{background:var(--surface);color:var(--text);}
+.tb-btn.primary{background:rgba(240,192,96,0.1);border-color:rgba(240,192,96,0.25);color:#f0c060;}
+.user-chip{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);padding:4px 8px;background:var(--surface);border-radius:6px;border:1px solid var(--border);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.app-layout{display:grid;grid-template-columns:220px 1fr 280px;flex:1;overflow:hidden;}
+.sidebar{background:var(--night);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sb-head{padding:12px 10px 8px;display:flex;align-items:center;justify-content:space-between;}
+.sb-label{font-family:'JetBrains Mono',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--muted);padding:0 10px 6px;}
+.sb-new{width:24px;height:24px;background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.25);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#f0c060;cursor:pointer;}
+.nb-list{padding:0 8px;margin-bottom:8px;}
+.nb-item{padding:7px 10px;border-radius:7px;cursor:pointer;font-size:0.78rem;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:7px;margin-bottom:2px;}
+.nb-item:hover{background:var(--surface);color:var(--text);}
+.nb-item.on{background:rgba(240,192,96,0.08);color:var(--gold);border:1px solid rgba(240,192,96,0.15);}
+.nb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.notes-list{flex:1;overflow-y:auto;padding:0 8px;}
+.note-card{padding:10px 11px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:3px;}
+.note-card:hover{background:var(--surface);}
+.note-card.on{background:rgba(240,192,96,0.07);border-color:rgba(240,192,96,0.18);}
+.note-card.pinned{border-left:3px solid var(--gold);}
+.nc-title{font-size:0.78rem;font-weight:600;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nc-preview{font-size:0.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:300;}
+.nc-meta{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+.nc-date{font-family:'JetBrains Mono',monospace;font-size:0.57rem;color:var(--muted);}
+.nc-tag{font-size:0.57rem;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;}
+.tag-General{background:rgba(179,157,219,0.15);color:#b39ddb;}
+.tag-Clinical{background:rgba(255,107,107,0.15);color:#ff6b6b;}
+.tag-Study{background:rgba(80,227,164,0.15);color:#50e3a4;}
+.tag-Ideas{background:rgba(240,192,96,0.15);color:#f0c060;}
+.tag-Finance{background:rgba(100,181,246,0.15);color:#64b5f6;}
+.tag-Personal{background:rgba(179,157,219,0.15);color:#b39ddb;}
+.sb-footer{padding:10px 12px;border-top:1px solid var(--border);}
+.storage-row{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:5px;}
+.storage-bar{height:3px;background:var(--surface);border-radius:2px;overflow:hidden;}
+.storage-fill{height:100%;background:linear-gradient(90deg,#50e3a4,#f0c060);border-radius:2px;}
+.canvas{display:flex;flex-direction:column;overflow:hidden;background:var(--deep);}
+.canvas-toolbar{display:flex;align-items:center;gap:4px;padding:7px 12px;border-bottom:1px solid var(--border);background:var(--night);flex-wrap:wrap;flex-shrink:0;}
+.ct-btn{padding:5px 9px;background:transparent;border:1px solid transparent;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--muted);}
+.ct-btn:hover{background:var(--surface);color:var(--text);}
+.tag-sel{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.7rem;color:var(--text);outline:none;margin-left:auto;}
+.tag-sel option{background:var(--deep);}
+.note-editor{flex:1;overflow-y:auto;padding:32px 44px;}
+.note-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;background:transparent;border:none;outline:none;color:var(--text);width:100%;margin-bottom:10px;}
+.note-title::placeholder{color:var(--muted);}
+.note-meta{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap;}
+.n-meta{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);}
+.n-meta.live{color:var(--mint);}
+.note-body{font-size:0.9rem;line-height:1.9;color:#ccc;font-weight:300;outline:none;min-height:200px;}
+.note-body:empty::before{content:'Start writing...';color:var(--muted);font-style:italic;pointer-events:none;}
+.canvas-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);}
+.ce-icon{font-size:3rem;}
+.ce-title{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--text);opacity:0.4;}
+.ce-btn{background:linear-gradient(135deg,#f0c060,#ff6b6b);color:#0a0a0f;border:none;padding:11px 26px;border-radius:10px;font-size:0.84rem;font-weight:700;cursor:pointer;margin-top:6px;}
+.statusbar{height:26px;background:var(--night);border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 14px;font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--muted);flex-shrink:0;}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--mint);}
+.sb-right{margin-left:auto;}
+.ai-panel{background:var(--night);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.ai-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.ai-brand{display:flex;align-items:center;gap:7px;font-size:0.78rem;font-weight:700;color:var(--gold);}
+.ai-glyph{width:24px;height:24px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;}
+.ai-status-chip{font-family:'JetBrains Mono',monospace;font-size:0.58rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--muted);}
+.ai-feed{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;}
+.ai-wrap{display:flex;flex-direction:column;}
+.ai-wrap.u{align-items:flex-end;}
+.ai-lbl{font-family:'JetBrains Mono',monospace;font-size:0.54rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:3px;padding:0 3px;}
+.ai-bub{padding:9px 11px;border-radius:9px;font-size:0.76rem;line-height:1.6;max-width:95%;}
+.ai-bub.c{background:var(--surface);border:1px solid var(--border);border-radius:9px 9px 9px 2px;color:var(--text);}
+.ai-bub.u{background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.2);border-radius:9px 9px 2px 9px;color:var(--text);}
+.ai-think{display:flex;gap:4px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;width:fit-content;}
+.ai-think span{width:5px;height:5px;background:var(--gold);border-radius:50%;animation:blink 1.2s infinite;}
+.ai-think span:nth-child(2){animation-delay:0.2s;}
+.ai-think span:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{0%,100%{opacity:0.3;transform:translateY(0);}50%{opacity:1;transform:translateY(-3px);}}
+.ai-quick{padding:7px 9px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;}
+.ai-q-btn{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:0.62rem;font-weight:600;cursor:pointer;color:var(--muted);}
+.ai-q-btn:hover{background:rgba(240,192,96,0.1);color:var(--gold);border-color:rgba(240,192,96,0.25);}
+.ai-input-row{display:flex;gap:6px;align-items:flex-end;padding:9px 10px;border-top:1px solid var(--border);flex-shrink:0;}
+.ai-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:0.76rem;color:var(--text);resize:none;outline:none;min-height:34px;}
+.ai-input::placeholder{color:var(--muted);}
+.ai-send{width:32px;height:32px;background:linear-gradient(135deg,#f0c060,#ff6b6b);border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;color:#0a0a0f;font-weight:700;flex-shrink:0;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:999;}
+.modal-bg.on{display:flex;}
+.modal{background:var(--deep);border:1px solid var(--border2);border-radius:16px;padding:28px 26px;max-width:340px;width:90%;}
+.modal h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:8px;}
+.modal p{font-size:0.8rem;color:var(--muted);margin-bottom:14px;font-weight:300;line-height:1.6;}
+.modal-preview{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:0.78rem;margin-bottom:18px;font-style:italic;}
+.modal-btns{display:flex;gap:8px;}
+.modal-btn{flex:1;padding:9px;border-radius:8px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;}
+.modal-btn.cancel{background:var(--surface);color:var(--text);}
+.modal-btn.del{background:rgba(255,107,107,0.15);color:var(--coral);border:1px solid rgba(255,107,107,0.3);}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#222230;border:1px solid rgba(255,255,255,0.13);border-radius:9px;padding:10px 18px;font-size:0.8rem;font-weight:500;z-index:9999;transition:transform 0.3s;white-space:nowrap;pointer-events:none;color:#e8e6f0;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+@media(max-width:900px){.app-layout{grid-template-columns:1fr;}.sidebar,.ai-panel{display:none;}.note-editor{padding:20px 18px;}}
+</style>
+</head>
+<body>
+<div id="authScreen">
+<div class="auth-box">
+<div class="auth-brand">
+<div class="auth-icon">✦</div>
+<div class="auth-name">ClaraNotes</div>
+</div>
+<div class="auth-tabs">
+<button class="auth-tab on" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+<button class="auth-tab" id="tabSignup" onclick="switchTab('signup')">Create Account</button>
+</div>
+<div class="auth-alert err" id="authErr"></div>
+<div class="auth-alert ok" id="authOk"></div>
+<div class="fld" id="nameWrap" style="display:none">
+<label>Full Name</label>
+<input id="nameIn" type="text" placeholder="Your name"/>
+</div>
+<div class="fld">
+<label>Email</label>
+<input id="emailIn" type="email" placeholder="you@email.com"/>
+</div>
+<div class="fld">
+<label>Password</label>
+<input id="passIn" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()"/>
+</div>
+<button class="auth-submit" id="authBtn" onclick="doAuth()">Sign In</button>
+</div>
+</div>
+<div id="appScreen">
+<div class="topbar">
+<div class="topbar-brand">
+<div class="topbar-icon">✦</div>
+<span class="topbar-name">ClaraNotes</span>
+</div>
+<input class="topbar-search" placeholder="🔍 Search notes..." id="searchIn" oninput="filterNotes(this.value)"/>
+<div class="topbar-actions">
+<button class="tb-btn primary" onclick="newNote()">+ New Note</button>
+<button class="tb-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+<span class="user-chip" id="userChip"></span>
+<button class="tb-btn" onclick="doSignOut()">Sign Out</button>
+</div>
+</div>
+<div class="app-layout">
+<div class="sidebar">
+<div class="sb-head">
+<span class="sb-label">Notebooks</span>
+<button class="sb-new" onclick="newNote()">+</button>
+</div>
+<div class="nb-list">
+<div class="nb-item on" onclick="filterByNb('all',this)"><div class="nb-dot" style="background:#f0c060"></div>All Notes</div>
+<div class="nb-item" onclick="filterByNb('pinned',this)"><div class="nb-dot" style="background:#ff6b6b"></div>Pinned</div>
+<div class="nb-item" onclick="filterByNb('Clinical',this)"><div class="nb-dot" style="background:#ff6b6b"></div>Clinical</div>
+<div class="nb-item" onclick="filterByNb('Study',this)"><div class="nb-dot" style="background:#50e3a4"></div>Study</div>
+<div class="nb-item" onclick="filterByNb('Ideas',this)"><div class="nb-dot" style="background:#f0c060"></div>Ideas</div>
+<div class="nb-item" onclick="filterByNb('Finance',this)"><div class="nb-dot" style="background:#64b5f6"></div>Finance</div>
+<div class="nb-item" onclick="filterByNb('Personal',this)"><div class="nb-dot" style="background:#b39ddb"></div>Personal</div>
+</div>
+<div class="sb-label">Notes</div>
+<div class="notes-list" id="notesList"></div>
+<div class="sb-footer">
+<div class="storage-row"><span>Notes</span><span id="noteCount" style="color:#50e3a4">0</span></div>
+<div class="storage-bar"><div class="storage-fill" id="storageFill" style="width:0%"></div></div>
+</div>
+</div>
+<div class="canvas">
+<div class="canvas-toolbar">
+<button class="ct-btn" onclick="fmt('bold')"><b>B</b></button>
+<button class="ct-btn" onclick="fmt('italic')"><i>I</i></button>
+<button class="ct-btn" onclick="fmt('underline')"><u>U</u></button>
+<button class="ct-btn" onclick="fmtBlock('h1')">H1</button>
+<button class="ct-btn" onclick="fmtBlock('h2')">H2</button>
+<button class="ct-btn" onclick="fmtBlock('ul')">≡ List</button>
+<button class="ct-btn" onclick="addChecklist()">☑ Check</button>
+<button class="ct-btn" onclick="fmtHighlight()">🖍</button>
+<button class="ct-btn" onclick="pinNote()">📌</button>
+<button class="ct-btn" onclick="exportNote()">⬇</button>
+<button class="ct-btn" onclick="deleteConfirm()" style="color:var(--coral)">🗑</button>
+<select class="tag-sel" id="tagSel" onchange="onTagChange()">
+<option value="General">General</option>
+<option value="Clinical">Clinical</option>
+<option value="Study">Study</option>
+<option value="Ideas">Ideas</option>
+<option value="Finance">Finance</option>
+<option value="Personal">Personal</option>
+</select>
+</div>
+<div class="canvas-empty" id="canvasEmpty">
+<div class="ce-icon">✦</div>
+<div class="ce-title">No note selected</div>
+<div style="font-size:0.8rem;font-weight:300;">Choose a note or create a new one</div>
+<button class="ce-btn" onclick="newNote()">+ Create First Note</button>
+</div>
+<div id="noteEditor" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+<div class="note-editor">
+<input class="note-title" id="noteTitle" placeholder="Note title..." oninput="scheduleSave()"/>
+<div class="note-meta">
+<span class="n-meta" id="metaDate">📅 —</span>
+<span class="n-meta" id="metaWords">📝 0 words</span>
+<span class="n-meta live" id="metaSync">☁ Saved</span>
+</div>
+<div class="note-body" id="noteBody" contenteditable="true" oninput="onBodyInput()" onmouseup="onSelect()"></div>
+</div>
+</div>
+<div class="statusbar" id="statusbar" style="display:none;">
+<div class="sb-dot"></div>
+<span id="sbSave">Saved</span>
+<span id="sbWords">0 words</span>
+<span class="sb-right" id="sbDate">—</span>
+</div>
+</div>
+<div class="ai-panel">
+<div class="ai-head">
+<div class="ai-brand"><div class="ai-glyph">✦</div>Clara AI</div>
+<span class="ai-status-chip" id="aiStatus">Ready</span>
+</div>
+<div class="ai-feed" id="aiFeed">
+<div class="ai-wrap">
+<div class="ai-lbl">Clara AI</div>
+<div class="ai-bub c">Hi! I am Clara. Open a note and I will read it. I can summarize, make flashcards, extract action items, continue writing, translate, or quiz you.</div>
+</div>
+</div>
+<div class="ai-quick">
+<button class="ai-q-btn" onclick="ask('Summarize this note')">Summarize</button>
+<button class="ai-q-btn" onclick="ask('Extract action items')">Actions</button>
+<button class="ai-q-btn" onclick="ask('Generate 5 flashcards in Q and A format')">Flashcards</button>
+<button class="ai-q-btn" onclick="ask('Continue writing this note')">Continue</button>
+<button class="ai-q-btn" onclick="ask('Translate this note to Spanish')">Translate</button>
+<button class="ai-q-btn" onclick="ask('Quiz me on this note')">Quiz Me</button>
+<button class="ai-q-btn" onclick="ask('Write an LCSW progress note from this')">LCSW</button>
+</div>
+<div class="ai-input-row">
+<textarea class="ai-input" id="aiIn" placeholder="Ask Clara anything..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}"></textarea>
+<button class="ai-send" id="aiSendBtn" onclick="sendAI()">→</button>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-bg" id="delModal">
+<div class="modal">
+<h3>Delete this note?</h3>
+<p>This will permanently delete the note.</p>
+<div class="modal-preview" id="delPreview"></div>
+<div class="modal-btns">
+<button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+<button class="modal-btn del" onclick="doDelete()">Delete</button>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
 <script>
-const SUPA_URL='https://hotsttcrivqmyjpuvqto.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvdHN0dGNyaXZxbXlqcHV2cXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MjkzNzUsImV4cCI6MjA5MzAwNTM3NX0.J3rDyXJrYNAJS-J5V6NlF_rtEtux_JYxoWpS640-vGw';
-const OR_KEY='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';
-const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+const SB_URL='https://hotsttcrivqmyjpuvqto.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvdHN0dGNyaXZxbXlqcHV2cXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MjkzNzUsImV4cCI6MjA5MzAwNTM3NX0.J3rDyXJrYNAJS-J5V6NlF_rtEtux_JYxoWpS640-vGw';
+const OR='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';
+const sb=supabase.createClient(SB_URL,SB_KEY);
 let user=null,notes=[],activeId=null,saveTimer=null,authMode='login',nbFilter='all',searchQ='';
 
 async function init(){
+try{
 const{data:{session}}=await sb.auth.getSession();
 if(session){user=session.user;showApp();}
 sb.auth.onAuthStateChange((e,s)=>{
 if(e==='SIGNED_IN'&&s){user=s.user;showApp();}
 else if(e==='SIGNED_OUT'){user=null;showAuth();}
 });
+}catch(e){console.error('Init error:',e);}
 }
 
 function switchTab(m){
@@ -28,11 +313,10 @@ async function doAuth(){
 const email=document.getElementById('emailIn').value.trim();
 const pass=document.getElementById('passIn').value;
 const btn=document.getElementById('authBtn');
-const err=document.getElementById('authErr');
-const ok=document.getElementById('authOk');
-if(!email||!pass){showErr('Please fill in all fields.');return;}
+if(!email||!pass){showAErr('Please fill in all fields.');return;}
 btn.disabled=true;btn.textContent='Please wait...';
-err.style.display='none';ok.style.display='none';
+document.getElementById('authErr').style.display='none';
+document.getElementById('authOk').style.display='none';
 try{
 if(authMode==='login'){
 const{error}=await sb.auth.signInWithPassword({email,password:pass});
@@ -41,22 +325,31 @@ if(error)throw error;
 const name=document.getElementById('nameIn').value.trim();
 const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
 if(error)throw error;
-ok.textContent='Account created! Check your email, then sign in.';
+const ok=document.getElementById('authOk');
+ok.textContent='Account created! Check your email then sign in.';
 ok.style.display='block';
 btn.disabled=false;btn.textContent='Create Account';return;
 }
-}catch(e){showErr(e.message||'Something went wrong.');btn.disabled=false;btn.textContent=authMode==='login'?'Sign In':'Create Account';}
+}catch(e){
+showAErr(e.message||'Something went wrong.');
+btn.disabled=false;
+btn.textContent=authMode==='login'?'Sign In':'Create Account';
+}
 }
 
-function showErr(m){const el=document.getElementById('authErr');el.textContent=m;el.style.display='block';}
+function showAErr(m){
+const el=document.getElementById('authErr');
+el.textContent=m;el.style.display='block';
+}
+
 async function doSignOut(){await sb.auth.signOut();}
 
 function showApp(){
 document.getElementById('authScreen').style.display='none';
-const a=document.getElementById('appScreen');a.style.display='flex';
-document.getElementById('userChip').textContent=user?.email||'';
+document.getElementById('appScreen').style.display='flex';
+document.getElementById('userChip').textContent=user.email||'';
 loadNotes();
-addMsg('clara','Welcome back! I\'m Clara. Open a note and I\'ll read it and help you summarize, study, write, or take action. What are you working on today?');
+addMsg('clara','Welcome back! Open a note and I will read it. I can summarize, make flashcards, extract action items, continue writing, or quiz you.');
 }
 
 function showAuth(){
@@ -67,14 +360,16 @@ document.getElementById('appScreen').style.display='none';
 async function loadNotes(){
 const{data,error}=await sb.from('notes').select('*').order('updated_at',{ascending:false});
 if(error){toast('Error loading notes','e');return;}
-notes=data||[];renderList();updateStorage();
+notes=data||[];
+renderList();
+updateStorage();
 }
 
 function getFiltered(){
 let list=notes;
 if(nbFilter==='pinned')list=list.filter(n=>n.pinned);
 else if(nbFilter!=='all')list=list.filter(n=>n.tag===nbFilter);
-if(searchQ)list=list.filter(n=>(n.title||'').toLowerCase().includes(searchQ)||(strip(n.content||'')).toLowerCase().includes(searchQ));
+if(searchQ)list=list.filter(n=>(n.title||'').toLowerCase().includes(searchQ)||strip(n.content||'').toLowerCase().includes(searchQ));
 return list;
 }
 
@@ -82,45 +377,40 @@ function renderList(){
 const el=document.getElementById('notesList');
 const list=getFiltered();
 if(!list.length){
-el.innerHTML='<div style="text-align:center;padding:30px 16px;color:var(--muted);font-size:0.76rem;line-height:1.7;"><div style="font-size:1.8rem;margin-bottom:10px;">✦</div>No notes here.<br>Tap + to create one.</div>';
+el.innerHTML='<div style="text-align:center;padding:30px 16px;color:var(--muted);font-size:0.76rem;line-height:1.7;"><div style="font-size:1.8rem;margin-bottom:10px;">✦</div>No notes yet.<br>Tap + to create one.</div>';
 return;
 }
-el.innerHTML=list.map(n=>`
-<div class="note-card${n.id===activeId?' on':''}${n.pinned?' pinned':''}" onclick="openNote('${n.id}')">
-<div class="nc-title">${esc(n.title||'Untitled')}</div>
-<div class="nc-preview">${esc(strip(n.content||'').substring(0,55))||'Empty note...'}</div>
-<div class="nc-meta">
-<span class="nc-date">${fmtDate(n.updated_at)}</span>
-<div style="display:flex;gap:4px;align-items:center;">
-${n.pinned?'<span style="font-size:0.6rem;">📌</span>':''}
-<span class="nc-tag tag-${n.tag||'General'}">${n.tag||'General'}</span>
-</div>
-</div>
-</div>`).join('');
+el.innerHTML=list.map(n=>`<div class="note-card${n.id===activeId?' on':''}${n.pinned?' pinned':''}" onclick="openNote('${n.id}')"><div class="nc-title">${esc(n.title||'Untitled')}</div><div class="nc-preview">${esc(strip(n.content||'').substring(0,55))||'Empty note...'}</div><div class="nc-meta"><span class="nc-date">${fmtDate(n.updated_at)}</span><span class="nc-tag tag-${n.tag||'General'}">${n.tag||'General'}</span></div></div>`).join('');
 }
 
 async function newNote(){
 const{data,error}=await sb.from('notes').insert([{user_id:user.id,title:'Untitled Note',content:'',tag:'General'}]).select().single();
 if(error){toast('Error: '+error.message,'e');return;}
-notes.unshift(data);renderList();openNote(data.id);
+notes.unshift(data);
+renderList();
+openNote(data.id);
 setTimeout(()=>document.getElementById('noteTitle').focus(),100);
-toast('New note created ✦');
+toast('New note created');
 }
 
 function openNote(id){
-const note=notes.find(n=>n.id===id);if(!note)return;
-activeId=id;renderList();
+const note=notes.find(n=>n.id===id);
+if(!note)return;
+activeId=id;
+renderList();
 document.getElementById('canvasEmpty').style.display='none';
-const ed=document.getElementById('noteEditor');ed.style.display='flex';ed.style.flexDirection='column';
+document.getElementById('noteEditor').style.display='flex';
+document.getElementById('noteEditor').style.flexDirection='column';
 document.getElementById('statusbar').style.display='flex';
 document.getElementById('noteTitle').value=note.title||'';
 document.getElementById('noteBody').innerHTML=note.content||'';
 document.getElementById('tagSel').value=note.tag||'General';
 document.getElementById('metaDate').textContent='📅 '+fmtDate(note.updated_at);
 document.getElementById('sbDate').textContent=fmtDate(note.updated_at);
-updateWords();setSave('saved');
-const preview=strip(note.content||'').substring(0,200);
-addMsg('clara','Opened "<strong>'+esc(note.title||'Untitled')+'</strong>". '+(preview?'I can see your note. Ask me to summarize, generate flashcards, extract action items, continue writing, or quiz you.':'This note is empty — want me to help you start writing?'));
+updateWords();
+setSave('saved');
+const preview=strip(note.content||'').substring(0,150);
+addMsg('clara','Opened '+esc(note.title||'Untitled')+'. '+(preview?'I can see your note. Ask me to summarize, make flashcards, extract actions, or continue writing.':'This note is empty. Want me to help you start?'));
 }
 
 function scheduleSave(){setSave('saving');clearTimeout(saveTimer);saveTimer=setTimeout(saveNote,1400);}
@@ -135,7 +425,8 @@ const{error}=await sb.from('notes').update({title,content,tag,word_count:wc}).eq
 if(error){setSave('saving');return;}
 const i=notes.findIndex(n=>n.id===activeId);
 if(i!==-1)notes[i]={...notes[i],title,content,tag,word_count:wc};
-renderList();setSave('saved');
+renderList();
+setSave('saved');
 }
 
 function onBodyInput(){updateWords();scheduleSave();}
@@ -143,13 +434,15 @@ function onTagChange(){scheduleSave();}
 
 async function pinNote(){
 if(!activeId)return;
-const note=notes.find(n=>n.id===activeId);if(!note)return;
+const note=notes.find(n=>n.id===activeId);
+if(!note)return;
 const pinned=!note.pinned;
 const{error}=await sb.from('notes').update({pinned:pinned}).eq('id',activeId);
-if(error){toast('Error pinning note','e');return;}
+if(error){toast('Error pinning','e');return;}
 const i=notes.findIndex(n=>n.id===activeId);
 if(i!==-1)notes[i]={...notes[i],pinned:pinned};
-renderList();toast(pinned?'Note pinned 📌':'Note unpinned');
+renderList();
+toast(pinned?'Note pinned':'Note unpinned');
 }
 
 function filterByNb(nb,el){
@@ -164,7 +457,7 @@ function filterNotes(q){searchQ=q.toLowerCase();renderList();}
 function deleteConfirm(){
 if(!activeId)return;
 const note=notes.find(n=>n.id===activeId);
-document.getElementById('delPreview').textContent=note?.title||'Untitled';
+document.getElementById('delPreview').textContent=note?note.title||'Untitled':'';
 document.getElementById('delModal').classList.add('on');
 }
 
@@ -172,8 +465,10 @@ async function doDelete(){
 closeModal();
 const{error}=await sb.from('notes').delete().eq('id',activeId);
 if(error){toast('Error deleting','e');return;}
-notes=notes.filter(n=>n.id!==activeId);activeId=null;
-renderList();updateStorage();
+notes=notes.filter(n=>n.id!==activeId);
+activeId=null;
+renderList();
+updateStorage();
 document.getElementById('noteEditor').style.display='none';
 document.getElementById('statusbar').style.display='none';
 document.getElementById('canvasEmpty').style.display='flex';
@@ -184,64 +479,83 @@ function closeModal(){document.getElementById('delModal').classList.remove('on')
 
 function exportNote(){
 if(!activeId)return;
-const note=notes.find(n=>n.id===activeId);if(!note)return;
-const text=`${note.title||'Untitled'}\n${'='.repeat(40)}\n\n${strip(note.content||'')}`;
+const note=notes.find(n=>n.id===activeId);
+if(!note)return;
+const text=note.title+'\n'+'='.repeat(40)+'\n\n'+strip(note.content||'');
 const blob=new Blob([text],{type:'text/plain'});
-const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-a.download=`${(note.title||'note').replace(/[^a-z0-9]/gi,'_')}.txt`;a.click();
-toast('Exported ✓');
+const a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download=(note.title||'note').replace(/[^a-z0-9]/gi,'_')+'.txt';
+a.click();
+toast('Exported');
 }
 
 function fmt(cmd){document.execCommand(cmd);document.getElementById('noteBody').focus();scheduleSave();}
+
 function fmtBlock(tag){
-const body=document.getElementById('noteBody');
-if(tag==='h1')document.execCommand('formatBlock',false,'<h1>');
-else if(tag==='h2')document.execCommand('formatBlock',false,'<h2>');
+if(tag==='h1')document.execCommand('formatBlock',false,'h1');
+else if(tag==='h2')document.execCommand('formatBlock',false,'h2');
 else if(tag==='ul')document.execCommand('insertUnorderedList');
-body.focus();scheduleSave();
+document.getElementById('noteBody').focus();
+scheduleSave();
 }
+
 function fmtHighlight(){
 document.execCommand('styleWithCSS',false,true);
 document.execCommand('hiliteColor',false,'rgba(240,192,96,0.25)');
-document.getElementById('noteBody').focus();scheduleSave();
+document.getElementById('noteBody').focus();
+scheduleSave();
 }
+
 function addChecklist(){
 const item=document.createElement('div');
-item.className='checklist-item';
-item.innerHTML='<input type="checkbox" onchange="this.parentElement.querySelector(\'span\').classList.toggle(\'done\',this.checked)"><span contenteditable="true">Task item</span>';
-const body=document.getElementById('noteBody');
-body.appendChild(item);body.focus();scheduleSave();
+item.style.cssText='display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;';
+item.innerHTML='<input type="checkbox" style="margin-top:3px;width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:#f0c060;"><span contenteditable="true" style="flex:1;">Task item</span>';
+item.querySelector('input').addEventListener('change',function(){
+const span=this.nextElementSibling;
+span.style.textDecoration=this.checked?'line-through':'none';
+span.style.opacity=this.checked?'0.5':'1';
+});
+document.getElementById('noteBody').appendChild(item);
+scheduleSave();
 }
+
 function onSelect(){
 const sel=window.getSelection();
 if(sel&&!sel.isCollapsed&&sel.toString().length>3){
-addMsg('clara','You selected: "<em>'+esc(sel.toString().substring(0,100))+'</em>" — Want me to explain, expand, or create a flashcard from this?');
+addMsg('clara','You selected: '+esc(sel.toString().substring(0,100))+' - Want me to explain, expand, or make a flashcard?');
 }
 }
 
+let isLight=false;
 function toggleTheme(){
 const r=document.documentElement;
-const isLight=r.style.getPropertyValue('--night')==='#ffffff';
+isLight=!isLight;
 if(isLight){
-r.style.setProperty('--night','#0a0a0f');
-r.style.setProperty('--deep','#13131a');
-r.style.setProperty('--surface','#1c1c26');
-r.style.setProperty('--text','#e8e6f0');
-r.style.setProperty('--muted','#6b6880');
-}else{
 r.style.setProperty('--night','#ffffff');
 r.style.setProperty('--deep','#f5f5f7');
 r.style.setProperty('--surface','#ebebed');
 r.style.setProperty('--text','#1a1a2e');
 r.style.setProperty('--muted','#666680');
+document.getElementById('themeBtn').textContent='☀️';
+}else{
+r.style.setProperty('--night','#0a0a0f');
+r.style.setProperty('--deep','#13131a');
+r.style.setProperty('--surface','#1c1c26');
+r.style.setProperty('--text','#e8e6f0');
+r.style.setProperty('--muted','#6b6880');
+document.getElementById('themeBtn').textContent='🌙';
 }
 }
 
 async function sendAI(){
 const inp=document.getElementById('aiIn');
-const txt=inp.value.trim();if(!txt)return;
-inp.value='';await runAI(txt);
+const txt=inp.value.trim();
+if(!txt)return;
+inp.value='';
+await runAI(txt);
 }
+
 async function ask(p){await runAI(p);}
 
 async function runAI(msg){
@@ -251,34 +565,41 @@ document.getElementById('aiStatus').textContent='Thinking...';
 addMsg('user',esc(msg));
 const tid='t'+Date.now();
 const tel=document.createElement('div');
-tel.className='ai-wrap';tel.id=tid;
+tel.className='ai-wrap';
+tel.id=tid;
 tel.innerHTML='<div class="ai-lbl">Clara AI</div><div class="ai-think"><span></span><span></span><span></span></div>';
 const feed=document.getElementById('aiFeed');
-feed.appendChild(tel);feed.scrollTop=99999;
+feed.appendChild(tel);
+feed.scrollTop=99999;
 const note=notes.find(n=>n.id===activeId);
-const ctx=note?`Current note: "${note.title||'Untitled'}" (${note.tag||'General'})\n\n${strip(note.content||'').substring(0,2000)}`:'No note open.';
-const sys=`You are Clara AI inside ClaraNotes, a smart note-taking app. Be concise, warm, and direct. ${ctx}\n\nFormat flashcards as Q: / A: pairs. Format action items as numbered lists. Never make up info not in the note.`;
+const ctx=note?'Current note: "'+note.title+'" tag: '+note.tag+'\n\n'+strip(note.content||'').substring(0,2000):'No note is open.';
+const sys='You are Clara AI inside ClaraNotes. Be concise and helpful. '+ctx+' Format flashcards as Q: A: pairs. Format action items as numbered lists.';
 try{
 const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
 method:'POST',
 headers:{
 'Content-Type':'application/json',
-'Authorization':'Bearer '+OR_KEY,
+'Authorization':'Bearer '+OR,
 'HTTP-Referer':'https://clara-notes.vercel.app',
 'X-Title':'ClaraNotes'
 },
 body:JSON.stringify({
 model:'meta-llama/llama-3.1-8b-instruct:free',
-messages:[{role:'system',content:sys},{role:'user',content:msg}]
+messages:[
+{role:'system',content:sys},
+{role:'user',content:msg}
+]
 })
 });
 const data=await res.json();
-document.getElementById(tid)?.remove();
-const reply=data?.choices?.[0]?.message?.content||'No response. Try again.';
+const el=document.getElementById(tid);
+if(el)el.remove();
+const reply=data&&data.choices&&data.choices[0]?data.choices[0].message.content:'No response. Try again.';
 addMsg('clara',reply.replace(/\n/g,'<br>'));
 }catch(e){
-document.getElementById(tid)?.remove();
-addMsg('clara','Connection error: '+e.message);
+const el=document.getElementById(tid);
+if(el)el.remove();
+addMsg('clara','Error: '+e.message);
 }
 btn.disabled=false;
 document.getElementById('aiStatus').textContent='Ready';
@@ -288,29 +609,38 @@ function addMsg(role,html){
 const feed=document.getElementById('aiFeed');
 const wrap=document.createElement('div');
 wrap.className='ai-wrap'+(role==='user'?' u':'');
-wrap.innerHTML=`<div class="ai-lbl">${role==='clara'?'Clara AI':'You'}</div><div class="ai-bub ${role==='clara'?'c':'u'}">${html}</div>`;
-feed.appendChild(wrap);feed.scrollTop=99999;
+wrap.innerHTML='<div class="ai-lbl">'+(role==='clara'?'Clara AI':'You')+'</div><div class="ai-bub '+(role==='clara'?'c':'u')+'">'+html+'</div>';
+feed.appendChild(wrap);
+feed.scrollTop=99999;
 }
 
 function setSave(s){
 const el=document.getElementById('sbSave');
 const m=document.getElementById('metaSync');
-if(s==='saving'){el.textContent='Saving...';el.style.color='#f0c060';m.textContent='☁ Saving...';m.style.color='#f0c060';}
-else{el.textContent='Saved';el.style.color='#50e3a4';m.textContent='☁ Saved';m.style.color='#50e3a4';}
+if(s==='saving'){
+el.textContent='Saving...';el.style.color='#f0c060';
+m.textContent='Saving...';m.style.color='#f0c060';
+}else{
+el.textContent='Saved';el.style.color='#50e3a4';
+m.textContent='Saved';m.style.color='#50e3a4';
 }
+}
+
 function updateWords(){
 const w=countW(strip(document.getElementById('noteBody').innerHTML));
-document.getElementById('metaWords').textContent='📝 '+w+' words';
+document.getElementById('metaWords').textContent='Words: '+w;
 document.getElementById('sbWords').textContent=w+' words';
 }
+
 function updateStorage(){
 const c=notes.length;
 document.getElementById('noteCount').textContent=c;
 document.getElementById('storageFill').style.width=Math.min((c/100)*100,100)+'%';
 }
+
 function countW(t){return t.trim()?t.trim().split(/\s+/).length:0;}
 function strip(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||d.innerText||'';}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtDate(iso){
 if(!iso)return'—';
 const d=new Date(iso),now=new Date(),diff=Math.floor((now-d)/1000);
@@ -319,13 +649,14 @@ if(diff<3600)return Math.floor(diff/60)+'m ago';
 if(diff<86400)return Math.floor(diff/3600)+'h ago';
 return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
-let toastT;
+let toastTimer;
 function toast(msg,type){
 const el=document.getElementById('toast');
 el.textContent=msg;
 el.style.color=type==='e'?'#ff6b6b':'#50e3a4';
 el.classList.add('show');
-clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3000);
+clearTimeout(toastTimer);
+toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
 }
 
 init();
