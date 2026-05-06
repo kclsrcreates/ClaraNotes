@@ -575,7 +575,16 @@ const note=notes.find(n=>n.id===activeId);
 const ctx=note?'Current note: "'+note.title+'" tag: '+note.tag+'\n\n'+strip(note.content||'').substring(0,2000):'No note is open.';
 const sys='You are Clara AI inside ClaraNotes. Be concise and helpful. '+ctx+' Format flashcards as Q: A: pairs. Format action items as numbered lists.';
 try{
-const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+async function runAI(msg){
+const note=notes.find(n=>n.id===activeId);
+const ctx=note?'Note: "'+note.title+'"\n\n'+strip(note.content||'').substring(0,500):'';
+const fullMsg=ctx?msg+'\n\n[Context]\n'+ctx:msg;
+addMsg('user',esc(msg));
+addMsg('clara','Opening Clara AI chat with your note context...');
+window.open('https://openrouter.ai/chat?q='+encodeURIComponent(fullMsg),'_blank');
+document.getElementById('aiStatus').textContent='Ready';
+}
+
 method:'POST',
 headers:{
 'Content-Type':'application/json',
